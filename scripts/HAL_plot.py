@@ -2,6 +2,9 @@
 # Scripts for the plotting the solutions of the HAL model.
 # Author: Pierre Veron
 
+import numpy as np
+import json
+
 def plot_sol(ax, sol, legend = True, xlabel = True, ylabel = True, 
              ylabelright = True, legendkwargs = dict()):
     """ Plot the time dynamics of the solution of a HAL model.
@@ -61,3 +64,52 @@ def plot_sol(ax, sol, legend = True, xlabel = True, ylabel = True,
     if legend:
         ax.legend(**legendkwargs)
     return dict(ax = ax, ax2 = ax2)
+
+
+def load_from_files(fp):
+    """ Load the solution of a HAL resolution from the folder
+
+    Args:
+        fp (str): path to the output directory
+
+    Returns:
+        dict: solution of the HAL model. 
+    """
+    sol = dict()
+    with open(f"{fp}/_output_files.txt", "r") as f:
+        output_files = f.readlines()
+    for file in output_files:
+        fname = file.rstrip()
+        values = np.loadtxt(f"{fp}/{fname}")
+        sol[fname.replace(".txt","")] = values
+    with open(f"{fp}/SUMMARY.json", "r") as f:
+        summary = json.load(f)
+    sol.update(summary)
+    
+    return sol 
+
+def plot_from_files(ax, fp, legend = True, xlabel = True, ylabel = True, 
+             ylabelright = True, legendkwargs = dict()):
+    """ Plot the time dynamics of the solution of a HAL model from the folder 
+    containing the solution.
+
+    Args:
+        ax (matplotlib.axes.Axes): axes on which to plot the solution
+        fp (str): path of the folder containing the solution.
+        legend (bool, optional): add a legend. Defaults to True.
+        xlabel (bool, optional): add a xlabel. Defaults to True.
+        ylabel (bool, optional): add a y label. Defaults to True.
+        ylabelright (bool, optional): add a y label for the secondary axis. 
+            Defaults to True.
+        legendkwargs (dict, optional): kwargs passed to ax.legend(). 
+            Defaults to dict().
+
+    Returns:
+        dict:
+            * 'ax' contains the main axis
+            * 'ax2' contains the secondary axis.
+    """
+    
+    sol = load_from_files(fp)
+    return plot_sol(ax, sol, legend, xlabel, ylabel, ylabelright, legendkwargs)
+
