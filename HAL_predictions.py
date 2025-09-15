@@ -1,11 +1,8 @@
 #!/usr/bin/env python3 
 import argparse
-import sys 
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("0-prediction_ode")
-sys.path.append("modules")
 from scripts import HAL_neutral_LA
 from scripts import HAL_migr
 from scripts import HAL_plot
@@ -14,16 +11,15 @@ from scripts import utils
 
 
 
-def HAL_prediction(time, popsize, Na, K, nu, la, timeburnin, m, sla, precision, migr_outwards = False, **kwargs):
+def HAL_prediction(time, popsize, Na, K, nu, timeburnin, m, sla, precision, migr_outwards = False, **kwargs):
     """ Computes the resolution of the Holey Adaptive Lanscape model.
 
     Args:
-        time (float): Time of the resolution, after split.
+        time (float): Number of generations after split.
         popsize (float or list of floats with size 1 or 2): Population size(s)
         Na (float or None): Ancestral population size (if None, set to N1+N2)
         K (float): Threshold for outbreeding depression
         nu (float or list[1 or 2] floats): Mutation rate(s)
-        la (bool): Run the model with local adaptation. 
         timeburnin (float or None): Burnin time, if None set automatically.
         m (float or list[1 or 2] floats or None): Migration rate(s). If None,
             assumed zero. 
@@ -47,7 +43,7 @@ def HAL_prediction(time, popsize, Na, K, nu, la, timeburnin, m, sla, precision, 
     if Na is None:
         Na = "sum"
     
-    check_requirements(time, popsize, K, nu, la, timeburnin, m, sla, precision)
+    check_requirements(time, popsize, K, nu, timeburnin, m, sla, precision)
     
     # Prepare the resolution
     solver_kwargs = dict(atol = precision, rtol = precision)
@@ -64,7 +60,7 @@ def HAL_prediction(time, popsize, Na, K, nu, la, timeburnin, m, sla, precision, 
 
 
 
-    if la:
+    if not(sla is None):
         par["nu"] = nu[0]
         par["N"] = popsize[0]
         par["sLA"] = sla
@@ -122,12 +118,12 @@ def create_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--time", 
-        help = "Time of the resolution (after split), > 0", 
+        help = "Number of generations after split, > 0", 
         type = float, required = True)
 
     parser.add_argument(
         "--popsize", 
-        help = "Population size(s), one or two values accetped, > 0."
+        help = "Population size(s), one or two values accepted, > 0. "
         "If one value given, the two populations are considered to have the same size.",
         nargs="+", type=float, required = True)
     
@@ -144,12 +140,6 @@ def create_parser() -> argparse.ArgumentParser:
         required = True, 
         nargs="+")
 
-    parser.add_argument(
-        "--la", 
-        help = "Model with local adaptation, incompatible with migration or "
-        " different population size or mutation rate.", 
-        action = "store_true")
-    
     parser.add_argument(
         "--plot",
         help = "Plot the solution", 
@@ -189,6 +179,7 @@ def create_parser() -> argparse.ArgumentParser:
         help = "If --la, specify a coefficient of selection for local adaptation, >= 0", 
         default = None, 
         type = float)
+    
     parser.add_argument(
         "--precision", 
         help = "Solver precision", 
@@ -198,15 +189,15 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--migr_outwards", 
         help = "Specify if migration rates are defined as the probability of an "
-        "individual to move to the other population (emigration). If not specified," 
+        "individual to move to the other population (emigration). If not specified, " 
         "it is assumed that the migration rates are the probability that an "
-        "individual was in the other population at the previous"
+        "individual was in the other population at the previous "
         "generation (the default).", 
         action = "store_true")
     
     return parser
 
-def check_requirements(time, popsize, K, nu, la, timeburnin, m, sla, precision):
+def check_requirements(time, popsize, K, nu, timeburnin, m, sla, precision):
     if len(popsize) < 1 or len(popsize) > 2:
         raise ValueError("popsize must have one or two values, and {} were provided.".format(len(popsize)))
     elif len(popsize) == 1:
@@ -222,15 +213,13 @@ def check_requirements(time, popsize, K, nu, la, timeburnin, m, sla, precision):
     if not(m is None) and ((len(m) > 2) or (m[0] < 0) or (m[1] < 0)):
         raise ValueError("If specified --m must be one ore two positive or zero values")
 
-    if la:
+    if not(sla is None):
         if not(m is None):
             raise NotImplementedError("Model with local adaptation not compatible with the model with migration.") 
         if (N1 != N2) or (nu1 != nu2):
             raise NotImplementedError("Model with local adaptation and different population sizes and/or different mutation rates is not implemented.")
-        if (sla is None) or (sla < 0):
-            raise ValueError("For the model with local adaptation, please specify a valid coefficient of selection for local adaptation with --sla")
-    if not(sla is None) and not(la):
-        raise ValueError("A coefficient for local adaptation (sla) was specified but not the option --la")
+        if sla < 0:
+            raise ValueError("For the model with local adaptation, please specify a non-negative coefficient of selection for local adaptation with --sla")
     if not(timeburnin is None) and timeburnin <= 0:
         raise ValueError("If specified, timeburnin must be > 0.")
 
