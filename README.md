@@ -29,10 +29,21 @@ In summary
 | LA | :heavy_check_mark: |   | :heavy_check_mark: | :heavy_check_mark: |   | 
 | migr | :heavy_check_mark: | :heavy_check_mark: |  |  | :heavy_check_mark: |
 
+
+# Requirements 
+This tool requires the packages `matplotlib`, `scipy`, `numpy` and `termcolor`, the user needs to install them through:
+```bash
+python -m pip install <package_name>
+```
+or, to install the exact same versions as used in the publication:
+```bash
+python -m pip install -r requirements.txt
+```
+
 # Usage 
 ```bash
-python HAL_predictions [-h] --time float --popsize float [float ...] --K float
-                       --nu float [float ...] [--la] [--plot] [--output str]
+python HAL_predictions.py [-h] --time float --popsize float [float ...] --K float
+                       --nu float [float ...] [--plot] [--output str]
                        [--timeburnin float] [--m float [float ...]]
                        [--Na float] [--sla float] [--precision float]
                        [--migr_outwards]
@@ -41,11 +52,10 @@ python HAL_predictions [-h] --time float --popsize float [float ...] --K float
 ## Arguments
 **Optional arguments:**
  * `-h, --help` : show this help message and exit
- * `--time float` : Time of the resolution (after split), > 0
- * `--popsize float [float ...]` :  Population size(s), one or two values accetped, > 0. If one value given, the two populations are considered to have the same size.
+ * `--time float` : Number of generations after split, > 0
+ * `--popsize float [float ...]` :  Population size(s), one or two values accepted, > 0. If one value given, the two populations are considered to have the same size.
  * `--K float` : Threshold for outbreeding depression, > 0
  * `--nu float [float ...]` :  Mutation rate(s), > 0
- * `--la` : Model with local adaptation, incompatible with migration or different population size or mutation rate.
  * `--plot` : Plot the solution
  * `--output str` : Path to store the solution, default to ./output
  * `--timeburnin float` : Manually specify the burnin time (before split), > 0. If not specified, the burnin time is automatically adjusted to reach the equilibrium (limited to 25*time before an error occurs). If specified, the equilibrium might not be reached.
@@ -53,11 +63,20 @@ python HAL_predictions [-h] --time float --popsize float [float ...] --K float
  * `--Na float` : Ancestral population size. If not specified, automatically set to N1+N2.
  * `--sla float` : If --la, specify a coefficient of selection for local adaptation, >= 0
  * `--precision float` : Solver precision
- * `--migr_outwards` : Specify if migration rates are defined as the probability of an individual to move to the other population (emigration). If not specified,it is assumed that the migration rates are the probability that an individual was in the other population at the previousgeneration (the default).
+ * `--migr_outwards` : Specify if migration rates are defined as the probability of an individual to move to the other population (emigration). If not specified, it is assumed that the migration rates are the probability that an individual was in the other population at the previous generation (the default).
 
 ## Other
 Once resolved, the results are saved in the output directory and can be
 plotted.
+
+## Output content 
+The result of the prediction is stored as time-series in the output directory: 
+* `T_burnin.txt`: time points of the burning phase 
+* `Dw_burnin.txt`: dynamics of the polymorphism before the split, follows the time points 
+* `T.txt`: time points of the main phase.
+* `Db` `Dw1` `Dw2` `k` `ww1` `ww2` `wb` `s1` `s2` `m_e12` `m_e21.txt`: dynamics of divergence, polymorphism within populations, substitutions, within and between populations compatibility, coefficients of selections, effective migration rates through time. The list of those output files if stored in `_output_files.txt`.
+* `SUMMARY.json`: a summary of the prediction (contains the speciation time if applicable)
+* `_call.json`: a detail of the parameters used for the model.
 
 
 # Examples 
