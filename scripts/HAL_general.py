@@ -87,3 +87,17 @@ def mean_between_fitness(db, k, K):
     if k > K:
         return 0.0 
     return scipy.special.gammaincc(K+1-k, db - k)
+
+
+def _dichotomy_decreasing(f, t0, t1, dt):
+    """ Finds the root of a decreasing function given two bounds. 
+    Internal function, used to find the speciation time
+    """
+    # 
+    while t1 - t0 > dt:
+        t = (t1+t0)/2
+        if f(t) < 0:
+            t1 = t
+        else:
+            t0 = t
+    return (t1+t0)/2

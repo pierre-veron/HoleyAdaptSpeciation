@@ -3,7 +3,8 @@
 # Authors: Pierre Veron and Anaïs Spire. 
 import numpy as np
 import scipy
-from scripts.HAL_general import mean_between_fitness, mean_within_fitness, sel_coeff, R_neutral
+from scipy.optimize import elementwise
+from scripts.HAL_general import mean_between_fitness, mean_within_fitness, sel_coeff, R_neutral, _dichotomy_decreasing
 
 def eff_migr_rate(m, d_w, d_b, K, k):
     """ Effective migration rate, ie nb of migrants that actually mate and produce
@@ -103,12 +104,45 @@ def odes_migr(t, X, nu1, nu2, N1, N2, K, m12, m21, t_g, contact, stirling_approx
     return np.array([dd_w1, dd_w2, dd_b, dk])
 
 
+def _bracketable_wb(X, K):
+    """Internal function, used to find the speciation time"""
+    d_w1, d_w2, d_b, k = X
+    wb = mean_between_fitness(d_b, k, K)
+    if wb == 0.0:
+        return -1
+    else:
+        return wb 
+
+
+def find_speciation_time(solution, tmin, tmax, K, dt = 1.0):
+    """Finds the speciation time of a solved system with a precision dt.
+
+    Args:
+        solution (func): function f(t) -> [d_w1, d_w2, d_b, k]
+        tmin (float): time such that w_b(t) > 0
+        tmax (float): time such that w_b(t) = 0
+        K (float): Threshold for outbreeding depression. 
+        dt (float, optional): precision for the speciation time. Defaults to 1.0.
+
+    Returns:
+        float: speciation time (not duration)
+    """
+    f = lambda t: _bracketable_wb(solution(t), K)
+    if f(tmin) < 0 or f(tmax) > 0:
+        raise Exception("Provide valid bounds for the speciation time. ")
+    br = elementwise.bracket_root(f, xl0 = tmin, xmin = tmin, xmax = tmax)
+    if br.success:
+        tspec =  _dichotomy_decreasing(f, *br.bracket, dt = dt)
+        return tspec
+    else:
+        raise Exception(f"Unable to find speciation time within the given time frame: solver error {br.status}")
+
 def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0, Na = "sum",
                        stirling_approx = True, 
-                       solver_kwargs = dict(), wb_tol = 0.0, 
+                       solver_kwargs = dict(),
                        error_burnin_convergence = True, dw_burnin_tol = 0.005,
                        extend_burnin = 1, N1_N2_are_funct = False,
-                       migr_rates_are_funct = False):
+                       migr_rates_are_funct = False, dt = 10):
     """ Solves the whole system of ODE for the Holey Adaptive Landscape with 
     migration, including a burnin phase with one population. 
 
@@ -130,10 +164,6 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
             the calculation of sel_coeff. Defaults to True.
         solver_kwargs (dict, optional): kwargs passed to the solver. See arguments
             accepted by scipy.integrate.solve_ivp. Defaults to dict().
-        wb_tol (float): tolerance for speciation in the value of
-            w_b. Must be a number >= 0. If 0.0, speciation occurs when the probability of 
-            a viable offspring between the two populations is exactly 0. Otherwise,
-            speciation occurs when this probability is <= wb_tol. Defaults to 0.0.
         error_burnin_convergence (bool, optional): if True, an error is raised
             when the convergence is not reached after the burnin phase. 
             Defaults to True.
@@ -149,6 +179,7 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
             time (time after split). In this case, Na has to be specified. 
         migr_rates_are_funct (bool, optional): specify if the migration rates are 
             function of time (after split). 
+        dt (float > 0, optional): resolution for the solver. Default to 10. 
 
     Returns:
         dict: solutions to the burnin phase and the split phase. Objects:
@@ -185,6 +216,8 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
         raise Exception("Burnin phase did not satisfy convergence criterion.")
     # Split
     sol_split = scipy.integrate.solve_ivp(odes_migr, t_span = (start, start + t), 
+                         t_eval = np.arange(start, start + t, dt),
+                         dense_output = True, 
                          y0 = [Dw_burnin[-1], Dw_burnin[-1], Dw_burnin[-1], 0.0],
                          args = (nu1, nu2, N1, N2, K, m12, m21, t_g, False,    stirling_approx, N1_N2_are_funct, migr_rates_are_funct, start), 
                                  #nu1,nu2, N1, N2, K, m12, m21, t_g, contact, stirling_approx,  N1_N2_are_funct, migr_rates_are_funct, tsplit
@@ -218,13 +251,14 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
     wb = np.array([mean_between_fitness(Db[i], k[i], K) for i in range(len(T))])
     ww1 = np.array([mean_within_fitness(dw, K) for dw in Dw1])
     ww2 = np.array([mean_within_fitness(dw, K) for dw in Dw2])
+    
     # Calculate speciation time
-    speciation, t_spec, i = False, np.inf, 0
-    while i < len(T) and not(speciation):
-        if wb[i] <= wb_tol:
-            speciation = True
-            t_spec = T[i] - start
-        i += 1
+    if wb[-1] > 0:
+        speciation = False
+        t_spec = np.inf
+    else:
+        speciation = True
+        t_spec = find_speciation_time(sol_split.sol, start, start + t, K) - start
     
     return dict(T_burnin = np.array(T_burnin), Dw_burnin = np.array(Dw_burnin), 
                 burnin_converge = Dw_convergence,
