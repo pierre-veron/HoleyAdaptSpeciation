@@ -112,6 +112,6 @@ python HAL_predictions.py --time 20000 --nu 0.01 --popsize 3000 200 --m 0.0002 -
 ## 5. With local adaptation
 To add local adaptation, add the argument `--la` and set the coefficient of selection with `--sla`. Note that the model with local adaptation and migration or different population size is not implemented yet. 
 ```bash
-python HAL_predictions.py --time 5000 --nu 0.005 --popsize 3000 --la --sla 0.001 --K 100 --precision 1e-9 --plot
+python HAL_predictions.py --time 5000 --nu 0.005 --popsize 3000 --sla 0.001 --K 100 --precision 1e-9 --plot
 ```
 ![](examples/example5.png)
