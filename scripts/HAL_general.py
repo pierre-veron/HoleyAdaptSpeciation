@@ -1,10 +1,17 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Author: Pierre Veron
+Date: 2026-02-18
+Description: implements functions used in the general HAL framework
+License: MIT License
+"""
 import numpy as np
 import scipy, warnings
 
 def upper_gamma(a, x):
     """ Incomplete gamma function, defined as 
-    \int_x^{\infty} t^{s-1} e^{-t} dt 
+    \\int_x^{\\infty} t^{s-1} e^{-t} dt 
     https://en.wikipedia.org/wiki/Incomplete_gamma_function
     
     Args:
@@ -87,7 +94,6 @@ def mean_between_fitness(db, k, K):
     if k > K:
         return 0.0 
     return scipy.special.gammaincc(K+1-k, db - k)
-
 
 def _dichotomy_decreasing(f, t0, t1, dt):
     """ Finds the root of a decreasing function given two bounds. 

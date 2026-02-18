@@ -1,6 +1,13 @@
-#!/usr/bin/env python3 
-# Scripts for the resolution of the HAL model with migration.
-# Authors: Pierre Veron and Anaïs Spire. 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Author: Anaïs Spire, Agathe Chave-Lucas and Pierre Veron
+Date: 2026-02-18
+Description: implements the deterministic prediction tool for the scenario 
+    with migration (parapatric).
+License: MIT License
+"""
+
 import numpy as np
 import scipy
 from scipy.optimize import elementwise

@@ -1,6 +1,10 @@
-#!/usr/bin/env python3 
-# Scripts for the resolution of the HAL model without migration.
-# Author: Pierre Veron
+"""
+Author: Pierre Veron
+Date: 2026-02-18
+Description: implements the deterministic prediction tool for the allopatric 
+    scenarios (neutral or with local adaptation).
+License: MIT License
+"""
 import numpy as np
 import scipy
 from scipy.integrate import solve_ivp

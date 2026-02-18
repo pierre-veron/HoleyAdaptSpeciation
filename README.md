@@ -1,21 +1,10 @@
-Model of speciation under the Holey Adaptive Landscape (HAL).
-
-Gavrilets, S. (1999). A Dynamical Theory of Speciation on Holey Adaptive Landscapes. _The American Naturalist_, **154**(1), 1–22. doi: [10.1086/303217](https://doi.org/10.1086/303217)
-
-# Summary 
 This is a modelling tool for the speciation dynamics under an assumption of reproductive isolation based on the genetic distance between individuals. 
 
-# Authors
-**Pierre Veron<sup>1,2,#</sup>, Agathe Chave<sup>1</sup>, Anaïs Spire<sup>1</sup>**
-
-<sup>1</sup>Institut de biologie de l'École normale supérieure, Paris, France
-
-<sup>2</sup>Écologie Société et Évolution, Université Paris-Saclay, France
-
-<sup>#</sup>Contact `pveron` at `bio.ens.psl` dot `eu`
+The HAL model was originally proposed in:
+> Gavrilets, S. (1999). A Dynamical Theory of Speciation on Holey Adaptive Landscapes. _The American Naturalist_, **154**(1), 1–22. doi: [10.1086/303217](https://doi.org/10.1086/303217)
 
 # General
-This repository allows to run deterministic predictions deriving from Gavrilets (1999) to calculate the speciation dynamics between two populations after a split. The main assumption is that, individuals are fertile if their genetic distance is smaller than a threshold for outbreeding depression called $K$.
+This repository allows to run deterministic predictions and stochastic simulations deriving from Gavrilets (1999) to calculate the speciation dynamics between two populations after a split. The main assumption is that, individuals are fertile if their genetic distance is smaller than a threshold for incompatibility called $K$.
 
 3 variations of the model are implemented:
 * neutral, where two populations are splitted and accumulate neutral mutations
@@ -23,7 +12,7 @@ This repository allows to run deterministic predictions deriving from Gavrilets 
 * migration where the two populations can exchange genes by migrating individuals and accumulate neutral mutations.
 
 In summary
-| model | outbreeding depression | mutations neutral in themselves | mutations are favorable in one environment | allopatry (splitted populations) | parapatry (with gene flow) | 
+| model | genetic incompatibility | mutations neutral in themselves | mutations are favorable in one environment | allopatry (splitted populations) | parapatry (with gene flow) | 
 | --- | --- | --- | --- | --- | --- | 
 | neutral | :heavy_check_mark: | :heavy_check_mark: |  | :heavy_check_mark: |  |
 | LA | :heavy_check_mark: |   | :heavy_check_mark: | :heavy_check_mark: |   | 
@@ -31,16 +20,12 @@ In summary
 
 
 # Requirements 
-This tool requires the packages `matplotlib`, `scipy`, `numpy` and `termcolor`, the user needs to install them through:
+Install the exact same versions of the packages used in the publication:
 ```bash
-python -m pip install <package_name>
-```
-or, to install the exact same versions as used in the publication:
-```bash
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-# Usage 
+# Usage - Deterministic predictions
 ```bash
 python HAL_predictions.py [-h] --time float --popsize float [float ...] --K float
                        --nu float [float ...] [--plot] [--output str]
@@ -54,7 +39,7 @@ python HAL_predictions.py [-h] --time float --popsize float [float ...] --K floa
  * `-h, --help` : show this help message and exit
  * `--time float` : Number of generations after split, > 0
  * `--popsize float [float ...]` :  Population size(s), one or two values accepted, > 0. If one value given, the two populations are considered to have the same size.
- * `--K float` : Threshold for outbreeding depression, > 0
+ * `--K float` : Threshold for incompatibility, > 0
  * `--nu float [float ...]` :  Mutation rate(s), > 0
  * `--plot` : Plot the solution
  * `--output str` : Path to store the solution, default to ./output
@@ -78,6 +63,31 @@ The result of the prediction is stored as time-series in the output directory:
 * `SUMMARY.json`: a summary of the prediction (contains the speciation time if applicable)
 * `_call.json`: a detail of the parameters used for the model.
 
+
+# Usage - Stochastic simulations 
+```bash
+python HAL_simulations [-h] --time int --timeburnin int --popsize int
+                       [int ...] --K float --nu float --recombrate float
+                       [--plot] [--pred] [--output str]
+                       [--m float] [--sla float] [--migrmodel str]
+                       [--precision float]
+```
+
+## Arguments
+ * `-h, --help` : show this help message and exit
+ * `--time int` : Time of the resolution (after split), int > 0
+ * `--timeburnin int` : Burnin time (before split), int > 0.
+ * `--popsize int [int ...]` : Population size(s), one or two values accetped, int >0. If one value given, the two populations areconsidered to have the same size.
+ * `--K float` : Threshold for incompatibility, > 0
+ * `--nu float` : Mutation rate, > 0
+ * `--recombrate float` : Recombination rate, >= 0
+ * `--plot` : Plot the solution
+ * `--pred` : Run also the deterministic prediction. In this case,the results are stored in <output>/predictions/
+ * `--output str` : Path to store the solution, default to ./output
+ * `--m float` : In the case with migration, specify a migration rate, >= 0
+ * `--sla float` : In the case with local adaptation, specify a coefficient of selection for localadaptation, >= 0
+ * `--migrmodel str` : Migration model: island, directional_stepping_stone orstepping_stone. If unspecified, island is assumed.
+ * `--precision float` : Solver precision (only if --pred is used)
 
 # Examples 
 ## 1. Neutral model, with symmetric population sizes 
@@ -110,8 +120,40 @@ python HAL_predictions.py --time 20000 --nu 0.01 --popsize 3000 200 --m 0.0002 -
 ![](examples/example4.png)
 
 ## 5. With local adaptation
-To add local adaptation, add the argument `--la` and set the coefficient of selection with `--sla`. Note that the model with local adaptation and migration or different population size is not implemented yet. 
+To add local adaptation, set a coefficient of selection with `--sla` (by default it is 0). Note that the model with local adaptation and migration or different population size is not implemented yet. 
 ```bash
 python HAL_predictions.py --time 5000 --nu 0.005 --popsize 3000 --sla 0.001 --K 100 --precision 1e-9 --plot
 ```
 ![](examples/example5.png)
+
+## 6. Stochastic simulation allopatric scenario
+In this example, we run a simulation of stochastic process under the HAL model, similar to the configuration in the manuscript (Fig. S9-A1):
+```bash
+python HAL_simulations.py --time 4000 --timeburnin 2000 --popsize 300 --K 40 --recombrate 0  --nu 0.002 --pred --plot
+```
+![](examples/simulation_A1.png)
+
+## 7. Stochastic simulation parapatric scenario
+To add recombination in the model, we can change the parameter `--recombrate`. To add migration, simply specify a positive migration rate with `--m`. In this example, we run the configuration similar to F2 in the manuscript:
+```bash
+py HAL_simulations.py --time 4000 --timeburnin 2000 --popsize 100 --K 20 --recombrate 2  --nu 0.038 --m 0.001 --pred --plot
+```
+![](examples/simulation_F2.png)
+
+## 8. Stochastic simulation with local adaptation
+To add local adaptation in the model, simply specify the coefficient of local adaptation with the parameter `--sla`. For example (similar to the configuration B2 in the manuscript):
+```bash 
+python HAL_simulations.py --time 4000 --timeburnin 2000 --popsize 300 --K 40 --recombrate 2  --nu 0.002 --sla 0.005 --pred --plot
+```
+![](examples/simulation_B2.png)
+
+# Project architecture 
+* `examples/`: figures used in this README.
+* `scripts/`: main scripts implementing the HAL model (simulation and 
+deterministic predictions)
+
+Scripts:
+* `HAL_predictions.py`: function to run the HAL deterministic prediction 
+directly in command line
+* `HAL_simulations.py`: function to run the HAL stochastic simulations 
+directly in command line

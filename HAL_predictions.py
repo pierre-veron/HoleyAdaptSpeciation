@@ -1,6 +1,14 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Author: Pierre Veron
+Date: 2026-02-18
+Description: Wrapper script to run the HAL deterministic prediction from command-line.
+License: MIT License
+"""
 import argparse
 import os
+import json
 import matplotlib.pyplot as plt
 import numpy as np
 from scripts import HAL_neutral_LA
@@ -93,20 +101,19 @@ def save_pred(sol, outdir):
     fp = outdir
 
     output_files = []
-    full_message = True
     summary = dict()
     for k in sol.keys():
 
         if isinstance(sol[k], np.ndarray):
-            utils.savetxt("{}/{}.txt".format(fp, k), sol[k], full_message, round = True)
-            full_message = False
-            output_files.append("{}.txt\n".format(k))
+            np.savetxt("{}/{}.txt".format(fp, k), sol[k])
+            output_files.append("{}.txt".format(k))
         else:
             summary[k] = sol[k]
-
-    utils.savetxt("{}/_output_files.txt".format(fp), output_files)
-    utils.savejson("{}/SUMMARY.json".format(fp), summary)
-
+    with open("{}/_output_files.txt".format(fp), "w") as f:
+        f.writelines(output_files)
+    with open("{}/SUMMARY.json".format(fp), "w") as f:
+        json.dump(summary, f, cls = utils.NpEncoder)
+    
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog = "HAL_predictions", 
@@ -176,7 +183,7 @@ def create_parser() -> argparse.ArgumentParser:
     
     parser.add_argument(
         "--sla", 
-        help = "If --la, specify a coefficient of selection for local adaptation, >= 0", 
+        help = "For the simulation with local adaptation, specify a coefficient of selection for local adaptation, >= 0", 
         default = None, 
         type = float)
     
@@ -242,7 +249,8 @@ def main():
     if not os.path.exists(args.output):
         os.makedirs(args.output)
 
-    utils.savejson(args.output + "/_call.json", vars(args))
+    with open(args.output + "/_call.json", "w") as f:
+        json.dump(vars(args), f)
     save_pred(sol, args.output)
 
     # Plot the output
