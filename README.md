@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18683265.svg)](https://doi.org/10.5281/zenodo.18683265)
+
 This is a modelling tool for the speciation dynamics under an assumption of reproductive isolation based on the genetic distance between individuals. 
 
 The HAL model was originally proposed in:
