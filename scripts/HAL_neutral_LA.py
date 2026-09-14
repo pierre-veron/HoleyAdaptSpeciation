@@ -203,11 +203,15 @@ def solve_ODE_HAL_LA(t, nu, N, K, t_g, burnin, sLA = 0.0,
         dict: solutions to the burnin phase and the split phase. Objects:
             T_burnin, Dw_burnin,T, Dw, Db, k (arrays): solutions of the burnin 
                 and the split phase.
+            Dw_burnin_syno, Dw_syno, Db_syno (arrays): polymorphism and 
+                divergence on the synonymous sites.
+            Dw_burnin_syno_eq (float): equilibrium polymorphism after the burnin
+                phase, on the synonymous sites.
             m_e, s, wb, ww (arrays): additional quantities calculated on the 
                 split phase (effective migration rate, selection coefficient, 
                 inter-pop mean fitness, intra-pop mean fitness).
             burnin_converge (float): result on the convergence test on Dw_burnin.
-            speciation (float): True if speciation is reached
+            speciation (bool): True if speciation is reached
             t_spec (float): duration of speciation of np.inf if not reached. 
     """    
     # Burnin 
@@ -228,6 +232,8 @@ def solve_ODE_HAL_LA(t, nu, N, K, t_g, burnin, sLA = 0.0,
         start += burnin 
     if error_burnin_convergence and not(Dw_convergence):
         raise Exception("Burnin phase did not satisfy convergence criterion.")
+    T_burnin = np.array(T_burnin)
+    Dw_burnin = np.array(Dw_burnin)
     
     # Split
     sol_split = solve_ivp(odes_LA, t_span = (start, start + t), 
@@ -254,8 +260,16 @@ def solve_ODE_HAL_LA(t, nu, N, K, t_g, burnin, sLA = 0.0,
     else:
         speciation = True
         t_spec = find_speciation_time(sol_split.sol, start, start + t, K) - start
+        
+    # Calculate synonymous polymorphism and divergence
+    Dw_burnin_syno = 2 * nu * 2*N * (1 - np.exp(-T_burnin/(2*N))) # ancestral pop size is 2N 
+    Dw_burnin_syno_eq = 2*nu*2*N
+    Dw_syno = 2*nu*N + (Dw_burnin_syno_eq - 2*nu*N) * np.exp(-(T-T[0]) / N) # assuming start at equilibrium
+    Db_syno = Dw_burnin_syno_eq + 2*nu*(T-T[0])
     
-    return dict(T_burnin = np.array(T_burnin), Dw_burnin = np.array(Dw_burnin), 
+    return dict(T_burnin = T_burnin, Dw_burnin = Dw_burnin, 
                 burnin_converge = Dw_convergence,
                 T = T, Dw = Dw,  Db = Db, k = k, R_ = R_, s = s,
-                wb = wb, ww = ww, speciation = speciation, t_spec = t_spec)
+                wb = wb, ww = ww, speciation = speciation, t_spec = t_spec,
+                Dw_burnin_syno = Dw_burnin_syno, Dw_syno = Dw_syno,
+                Db_syno = Db_syno, Dw_burnin_syno_eq = Dw_burnin_syno_eq)

@@ -61,16 +61,22 @@ def R(d, N, K, stirling_approx = True, taylor_approx = True):
 
 def odes_migr(t, X, nu1, nu2, N1, N2, K, m12, m21, t_g, contact, stirling_approx = True,
               N1_N2_are_funct = False, migr_rates_are_funct = False, tsplit = None):
-    """ Returns 3-dimensional vector of derivative
+    """ Returns 4-dimensional vector of derivative
     
     Args:
         t (float): time (for scipy ivp)
         X (4 dimensional vector) : (d_w1, dw2, d_b, k) : the initial conditions of the odes
-        nu, N, K, m, t_g: cf. the functions in which these parameters are used
+        nu, Ni, K, m, t_g: cf. the functions in which these parameters are used
         contact (bool): if True, the populations are considered as one unique 
             population with size N1 and mutation rate nu1
         stirling_approx: if True, uses the stirling approximation for the calculation
-            of the Gamma function.
+            of the Gamma function
+        N1_N2_are_funct (bool, optional): specify if the provided population sizes 
+            are functions of time after split. If yes, tsplit should be provided.
+        migr_rates_are_funct (bool, optional): same for migration rates. 
+        tsplit (float, optional): if population sizes and/or migration rates are 
+            function of time, this time is counted as time after split. Splitting 
+            instant must be provided. 
         
     Returns:
         3 dimensional vector : (dD_w1_migr_pred, dD_w2_migr_pred, dD_b_migr_pred, 
@@ -144,6 +150,46 @@ def find_speciation_time(solution, tmin, tmax, K, dt = 1.0):
     else:
         raise Exception(f"Unable to find speciation time within the given time frame: solver error {br.status}")
 
+def odes_syno(t, y, nu1, nu2, N1, N2, m_e12, m_e21, T, 
+              N1_N2_are_funct = False, tsplit = None):
+    """ Returns 3 dimensional vector of derivative for synonymous polymorphism 
+    and divergence. Important: the system with non-synonymous polymorphism and 
+    divergence must have been solved already, because effective migration rates 
+    must be known. 
+
+    Args:
+        t (float): time
+        y (np.array): 3 dimensional vector of [d_w1_syno, d_w2_syno, d_b_syno]
+        nu1, nu2 (float): mutation rates
+        N1, N2 (float or function): population sizes
+        m_e12, m_e21 (np.array): solutions of effective migration rates
+        T (np.array): time-points for the solutions of m_e12 and m_e21, used to 
+            re-interpolate
+        N1_N2_are_funct (bool, optional): specify if the provided population sizes 
+            are functions of time after split. If yes, tsplit should be provided.
+            Defaults to False.
+        tsplit (_type_, optional): if population sizes and/or migration rates are 
+            function of time, this time is counted as time after split. Splitting 
+            instant must be provided. Defaults to None.
+
+    Returns:
+        np.array: derivatives of [d_w1_syno, d_w2_syno, d_b_syno]. 
+    """
+    d_w1_syno, d_w2_syno, d_b_syno = y 
+    
+    # interpolate effective migration rates 
+    m_e12_ = np.interp(t, T, m_e12)
+    m_e21_ = np.interp(t, T, m_e21)
+    
+    if N1_N2_are_funct:
+        N1_,N2_ = N1(t-tsplit), N2(t-tsplit)
+    else:
+        N1_,N2_ = N1,N2
+    dd_w1_syno = 2*nu1 - d_w1_syno / N1_ + 2*m_e21_*(d_b_syno - d_w1_syno)
+    dd_w2_syno = 2*nu2 - d_w2_syno / N2_ + 2*m_e12_*(d_b_syno - d_w2_syno)
+    dd_b_syno = nu1 + nu2 + m_e12_*(d_w1_syno-d_b_syno) + m_e21_*(d_w2_syno-d_b_syno)
+    return np.array([dd_w1_syno, dd_w2_syno, dd_b_syno])
+
 def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0, Na = "sum",
                        stirling_approx = True, 
                        solver_kwargs = dict(),
@@ -192,11 +238,15 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
         dict: solutions to the burnin phase and the split phase. Objects:
             T_burnin, Dw_burnin,T, Dw, Db, k (arrays): solutions of the burnin 
                 and the split phase.
+            Dw_burnin_syno, Dw1_syno, Dw2_syno, Db_syno (arrays): polymorphism
+                and divergence on the synonymous sites.
+            Dw_burnin_syno_eq (float): equilibrium polymorphism after the burnin
+                phase, on the synonymous sites.
             m_e, s, wb, ww (arrays): additional quantities calculated on the 
                 split phase (effective migration rate, selection coefficient, 
                 inter-pop mean fitness, intra-pop mean fitness).
             burnin_converge (float): result on the convergence test on Dw_burnin.
-            speciation (float): True if speciation is reached
+            speciation (bool): True if speciation is reached
             t_spec (float): duration of speciation of np.inf if not reached. 
     """   
     # Burnin 
@@ -227,8 +277,9 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
                          dense_output = True, 
                          y0 = [Dw_burnin[-1], Dw_burnin[-1], Dw_burnin[-1], 0.0],
                          args = (nu1, nu2, N1, N2, K, m12, m21, t_g, False,    stirling_approx, N1_N2_are_funct, migr_rates_are_funct, start), 
-                                 #nu1,nu2, N1, N2, K, m12, m21, t_g, contact, stirling_approx,  N1_N2_are_funct, migr_rates_are_funct, tsplit
                           **solver_kwargs)  
+    T_burnin = np.array(T_burnin)
+    Dw_burnin = np.array(Dw_burnin)
     T = sol_split['t']
     Dw1 = sol_split['y'][0,:]
     Dw2 = sol_split['y'][1,:]
@@ -267,9 +318,22 @@ def solve_ODE_HAL_migr(t, nu1, nu2, N1, N2, K, t_g, burnin, m12 = 0.0, m21 = 0.0
         speciation = True
         t_spec = find_speciation_time(sol_split.sol, start, start + t, K) - start
     
-    return dict(T_burnin = np.array(T_burnin), Dw_burnin = np.array(Dw_burnin), 
+    # Calculate synonymous polymorphism and divergence 
+    Dw_burnin_syno = 2 * nu1 * Na * (1 - np.exp(-T_burnin/(Na)))
+    Dw_burnin_syno_eq = 2 * nu1 * Na # assumption : we start with equilibrium at split
+    sol_split_syno = scipy.integrate.solve_ivp(odes_syno, t_span = (start, start + t),
+                                               t_eval = T, dense_output = True, 
+                                               y0 = [Dw_burnin_syno_eq, Dw_burnin_syno_eq, Dw_burnin_syno_eq],
+                                               args = (nu1, nu2, N1, N2, m_e12, m_e21, T, N1_N2_are_funct, tsplit), 
+                                               **solver_kwargs)
+    Dw1_syno = sol_split_syno['y'][0,:]
+    Dw2_syno = sol_split_syno['y'][1,:]
+    Db_syno = sol_split_syno['y'][2,:]
+    return dict(T_burnin = T_burnin, Dw_burnin = Dw_burnin, 
                 burnin_converge = Dw_convergence,
                 T = T, Dw1 = Dw1, Dw2 = Dw2, Db = Db, k = k, m_e12 = m_e12, 
                 m_e21 = m_e21, R1 = R1, R2 = R2, s1 = s1, s2 = s2, 
                 wb = wb, ww1 = ww1, ww2 = ww2, speciation = speciation, t_spec = t_spec,
-                message_burnin = sol_burnin.message, message_split = sol_split.message)
+                message_burnin = sol_burnin.message, message_split = sol_split.message,
+                Dw_burnin_syno = Dw_burnin_syno, Dw1_syno = Dw1_syno, Dw2_syno = Dw2_syno,
+                Db_syno = Db_syno, Dw_burnin_syno_eq = Dw_burnin_syno_eq)
