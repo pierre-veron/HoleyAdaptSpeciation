@@ -12,7 +12,8 @@ import numpy as np
 import json
 
 def plot_sol(ax, sol, legend = True, xlabel = True, ylabel = True, 
-             ylabelright = True, legendkwargs = dict(), plot_compatibility = True):
+             ylabelright = True, legendkwargs = dict(), plot_compatibility = True,
+             plot_syno = False):
     """ Plot the time dynamics of the solution of a HAL model.
 
     Args:
@@ -28,7 +29,9 @@ def plot_sol(ax, sol, legend = True, xlabel = True, ylabel = True,
             Defaults to dict().
         plot_compatibility (bool, optional): plot the between-populations 
             compatibility. Defaults to True. 
-
+        plot_syno (bool, optional): plot the synonymous divergence and polymorphism.
+            Defaults to False.
+        
     Returns:
         dict:
             * 'ax' contains the main axis
@@ -43,10 +46,22 @@ def plot_sol(ax, sol, legend = True, xlabel = True, ylabel = True,
                 color = "#98D4E2")
         ax.plot(sol["T"], sol["Dw1"], color = "#98D4E2", ls = ":", label = "$D_{w1}$")
         ax.plot(sol["T"], sol["Dw2"], color = "#98D4E2", ls = "--", label = "$D_{w2}$")
+        if plot_syno:
+            ax.plot(sol['T_burnin'], sol['Dw_burnin_syno'], label = "$D_{w,\\text{anc}}^{\\text{syno}}$", 
+                    color = "#46A8BE")
+            ax.plot(sol["T"], sol["Dw1_syno"], color = "#46A8BE", ls = ":", label = "$D_{w1}^{\\text{syno}}$")
+            ax.plot(sol["T"], sol["Dw2_syno"], color = "#46A8BE", ls = "--", label = "$D_{w2}^{\\text{syno}}$")
+            ax.plot(sol["T"], sol["Db_syno"] - (sol["Dw1_syno"] + sol["Dw2_syno"]) / 2, color = "#157F0E", label = "syn net div")
     else:
         ax.plot(sol['T_burnin'], sol['Dw_burnin'], label = "$D_{w}$",color = "#98D4E2")
         ax.plot(sol["T"], sol["Dw"], color = "#98D4E2")
+        if plot_syno:
+            ax.plot(sol['T_burnin'], sol['Dw_burnin_syno'], label = "$D_{w}^{\\text{syno}}$",color = "#46A8BE")
+            ax.plot(sol["T"], sol["Dw_syno"], color = "#46A8BE")
+            ax.plot(sol["T"], sol["Db_syno"] - sol["Dw_syno"], color = "#157F0E", label = "syn net div")
     ax.plot(sol["T"], sol["Db"], label = "$D_b$", color = "#B90845")
+    if plot_syno:
+        ax.plot(sol["T"], sol["Db_syno"], label = "$D_b^{\\text{syno}}$", color = "#830631")
     
     if "k" in sol.keys():
         ax.plot(sol["T"], sol["k"], label = "$k$", color = "#8D5E2A")
