@@ -56,11 +56,6 @@ def main():
     par = dict(nu=args.nu, K=args.K, n_gen=args.timeburnin+args.time, 
                n_gen_burnin=args.timeburnin, recomb_rate = args.recombrate, 
                t_g = 1.0, od = args.output)
-    
-    # Prepare output 
-    if not os.path.exists(args.output):
-        os.makedirs(args.output)
-    
     # Migration
     if migr:
         if args.migrmodel is None:
