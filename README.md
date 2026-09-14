@@ -62,6 +62,7 @@ The result of the prediction is stored as time-series in the output directory:
 * `Dw_burnin.txt`: dynamics of the polymorphism before the split, follows the time points 
 * `T.txt`: time points of the main phase.
 * `Db` `Dw1` `Dw2` `k` `ww1` `ww2` `wb` `s1` `s2` `m_e12` `m_e21.txt`: dynamics of divergence, polymorphism within populations, substitutions, within and between populations compatibility, coefficients of selections, effective migration rates through time. The list of those output files if stored in `_output_files.txt`.
+* `Dw_burnin_syno`, `Dw1_syno`, `Dw2_syno`, `Db_syno.txt`: dynamics of polymorphism and divergence on synonymous sites.
 * `SUMMARY.json`: a summary of the prediction (contains the speciation time if applicable)
 * `_call.json`: a detail of the parameters used for the model.
 
